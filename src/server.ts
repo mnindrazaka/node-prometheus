@@ -1,5 +1,6 @@
 import express from "express";
-import promClient, { Counter } from "prom-client";
+import { Counter, Gauge, register } from "prom-client";
+import os from "os";
 
 const app = express();
 
@@ -9,7 +10,18 @@ const endpointHitsCounter = new Counter({
   labelNames: ["endpoint"],
 });
 
-app.use((req, res, next) => {
+const cpuUsageGauge = new Gauge({
+  name: "cpu_usage",
+  help: "CPU usage in percentage",
+});
+
+setInterval(() => {
+  const cpuUsage =
+    os.cpus().reduce((acc, cpu) => acc + cpu.times.user, 0) / os.cpus().length;
+  cpuUsageGauge.set(cpuUsage);
+}, 5000);
+
+app.use((req, _res, next) => {
   endpointHitsCounter.labels(req.path).inc();
   next();
 });
@@ -23,8 +35,8 @@ app.get("/users", (req, res) => {
 });
 
 app.get("/metrics", async (req, res) => {
-  res.set("Content-Type", promClient.register.contentType);
-  res.end(await promClient.register.metrics());
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
 });
 
 const PORT = 3000;
