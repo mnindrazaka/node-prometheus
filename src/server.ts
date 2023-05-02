@@ -4,12 +4,6 @@ import os from "os";
 
 const app = express();
 
-const endpointHitsCounter = new Counter({
-  name: "endpoint_hits",
-  help: "Number of times an endpoint is hit",
-  labelNames: ["endpoint"],
-});
-
 const cpuUsageGauge = new Gauge({
   name: "cpu_usage",
   help: "CPU usage in percentage",
@@ -20,6 +14,22 @@ setInterval(() => {
     os.cpus().reduce((acc, cpu) => acc + cpu.times.user, 0) / os.cpus().length;
   cpuUsageGauge.set(cpuUsage);
 }, 5000);
+
+const memoryUsageGauge = new Gauge({
+  name: "memory_usage",
+  help: "Memory usage in bytes",
+});
+
+setInterval(() => {
+  const used = process.memoryUsage().heapUsed;
+  memoryUsageGauge.set(used);
+}, 5000);
+
+const endpointHitsCounter = new Counter({
+  name: "endpoint_hits",
+  help: "Number of times an endpoint is hit",
+  labelNames: ["endpoint"],
+});
 
 app.use((req, _res, next) => {
   endpointHitsCounter.labels(req.path).inc();
