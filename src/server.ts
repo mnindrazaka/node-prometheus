@@ -36,6 +36,32 @@ app.use((req, _res, next) => {
   next();
 });
 
+const rpsRequestCounter = new Counter({
+  name: "http_requests_total",
+  help: "Total number of HTTP requests",
+  labelNames: ["method", "status"],
+});
+
+const rpsGauge = new Gauge({
+  name: "http_requests_per_second",
+  help: "Current requests per second",
+});
+
+app.use((req, res, next) => {
+  rpsRequestCounter.inc({ method: req.method, status: res.statusCode });
+  next();
+});
+
+setInterval(async () => {
+  const counts = await rpsRequestCounter.get();
+  const totalCount = Object.values(counts.values).reduce(
+    (acc, curr) => acc + curr.value,
+    0
+  );
+  rpsGauge.set(totalCount);
+  rpsRequestCounter.reset();
+}, 1000);
+
 app.get("/", (req, res) => {
   res.send("mantap");
 });
